@@ -309,6 +309,9 @@ def page_train():
     max_depth = st.number_input("Decision Tree: max_depth (0 for None)", min_value=0, value=0, step=1)
     svm_c = st.number_input("SVM (linear): C", min_value=0.01, value=1.0, step=0.1)
 
+    # placeholder OUTSIDE status box so we don't nest expanders
+    log_placeholder = st.container()
+
     if st.button("Train Models"):
         Xtr, Xte = st.session_state.Xtr, st.session_state.Xte
         ytr, yte = st.session_state.ytr, st.session_state.yte
@@ -363,10 +366,6 @@ def page_train():
             bump(f"SVM fit complete in {fit_secs:.2f}s (step 5/6 done).", force_pct=85)
             st.session_state.svm_model = svm
             logs = log_buf.getvalue().strip()
-            if logs:
-                with status_area:
-                    with st.expander("SVM training logs", expanded=False):
-                        st.code(logs or "No logs", language="text")
 
             bump("Evaluating SVM (step 6/6)…", force_pct=95)
             m_svm = evaluate_model(svm, Xte, yte, class_names)
@@ -376,6 +375,12 @@ def page_train():
             status_area.update(label="Training complete", state="complete")
             st.success("Training complete. See *Models Evaluation* to compare metrics.")
 
+            # show logs OUTSIDE the status container (no nesting)
+            if logs:
+                with log_placeholder:
+                    with st.expander("SVM training logs", expanded=False):
+                        st.code(logs, language="text")
+
             if st.button("Save Artifacts to ./artifacts"):
                 save_artifacts(st.session_state.vectorizer, st.session_state.label_encoder, dt, svm,
                                st.session_state.metrics_dt, st.session_state.metrics_svm, class_names)
@@ -384,6 +389,7 @@ def page_train():
         except Exception as e:
             status_area.update(label="Training failed", state="error")
             st.error(f"Training error: {e}")
+
 
 def metrics_table(metrics: Dict, title: str):
     st.subheader(title)
@@ -665,10 +671,24 @@ st.caption("Amazon Fine Food Reviews • Pages: Upload → Preprocess → Train 
 
 with st.sidebar:
     st.header("Navigation")
-    page = st.radio("Go to", ["Data Upload", "Preprocessing", "Model Training", "Models Evaluation", "Word Clouds", "Prediction"])
+    page = st.radio("Go to", ["Data Upload", "Preprocessing", "Model Training",
+                              "Models Evaluation", "Word Clouds", "Prediction"])
     if st.button("Reset Session"):
-        reset_training_state()
-        st.experimental_rerun()
+        # wipe session state
+        for k in list(st.session_state.keys()):
+            del st.session_state[k]
+        # (optional) also clear any caches
+        try:
+            st.cache_data.clear()
+            st.cache_resource.clear()
+        except Exception:
+            pass
+        # rerun on modern Streamlit
+        try:
+            st.rerun()
+        except AttributeError:
+            # fallback for older Streamlit
+            st.experimental_rerun()
 
 if page == "Data Upload":
     page_upload()
