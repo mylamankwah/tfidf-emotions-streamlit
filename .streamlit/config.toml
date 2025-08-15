@@ -1,6 +1,7 @@
 [server]
 address = "0.0.0.0"
-port = 8502            # or whatever port your Codespace exposes
+port = 8501            # or 8502 if you switch
 headless = true
 enableCORS = false
 enableXsrfProtection = false
+
