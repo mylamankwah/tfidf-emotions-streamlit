@@ -2,8 +2,8 @@
 # Streamlit multi-page app for Amazon Fine Food Reviews
 # Embedding: TF-IDF (with optional stop-word removal)
 # Classifiers: Decision Tree & SVM (linear)
-# Metrics: Precision, Recall, F1 (macro), ROC-AUC (macro OvR)  ← numeric table only
-# ROC page: **Per-class** ROC curves + per-class AUCs (no micro/macro curves)
+# Metrics: Precision, Recall, F1 (macro), ROC-AUC (macro OvR)
+# ROC page: Per-class ROC curves + per-class AUCs (no micro/macro curves)
 # Pages: Upload → Preprocess → Train → Evaluate → Word Clouds → Predict
 #
 # How to run:
@@ -29,7 +29,7 @@ from sklearn.metrics import (
     roc_auc_score,
     confusion_matrix,
     roc_curve,
-    auc,  # for per-class AUC directly from each ROC curve
+    auc,
 )
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.svm import SVC
@@ -41,6 +41,16 @@ st.set_page_config(page_title="TF-IDF Emotion (Sentiment) Classifier", layout="w
 
 ART_DIR = "artifacts"
 os.makedirs(ART_DIR, exist_ok=True)
+
+# ---------- Small helpers for cross-version Streamlit ----------
+
+def _image_compat(img, caption=None):
+    """Show an image across Streamlit versions (fallback to use_column_width)."""
+    try:
+        st.image(img, caption=caption, use_container_width=True)
+    except TypeError:
+        # Older Streamlit didn't have use_container_width
+        st.image(img, caption=caption, use_column_width=True)
 
 # ---------- Utilities ----------
 
@@ -162,9 +172,7 @@ def _plot_roc_per_class(model_name, clf, Xte, yte, class_names, selected="All cl
     fig, ax = plt.subplots(figsize=(7, 5))
     ax.plot([0, 1], [0, 1], "k--", linewidth=1)
 
-    # Which classes to plot?
     indices = range(n_classes) if selected == "All classes" else [class_names.index(selected)]
-
     for i in indices:
         fpr, tpr, auc_i = _compute_roc_one_vs_rest(yte, scores, i, n_classes)
         ax.plot(fpr, tpr, label=f"{class_names[i]} (AUC={auc_i:.3f})")
@@ -390,14 +398,13 @@ def page_train():
             status_area.update(label="Training failed", state="error")
             st.error(f"Training error: {e}")
 
-
 def metrics_table(metrics: Dict, title: str):
     st.subheader(title)
     macro = pd.DataFrame([{
         "precision_macro": metrics["precision_macro"],
         "recall_macro": metrics["recall_macro"],
         "f1_macro": metrics["f1_macro"],
-        "roc_auc_macro_ovr": metrics["roc_auc_macro_ovr"],  # numeric summary remains
+        "roc_auc_macro_ovr": metrics["roc_auc_macro_ovr"],
     }])
     st.dataframe(macro.style.format("{:.3f}"))
     st.write("Per-class metrics:")
@@ -452,7 +459,6 @@ def page_evaluate():
         "roc_auc_macro_ovr": "{:.3f}"
     }))
 
-    # ---------- ROC curves (per-class only) ----------
     st.markdown("---")
     st.subheader("ROC Curves")
     model_choice = st.radio("Select model", ["Decision Tree", "SVM (linear)"], horizontal=True)
@@ -518,7 +524,7 @@ def page_wordclouds():
         wc = WordCloud(width=int(width), height=int(height), background_color="white")
         img = wc.generate_from_frequencies(freqs).to_image()
         with cols[i % len(cols)]:
-            st.image(img, caption=f"{cls} — top {len(freqs)} TF-IDF terms", use_container_width=True)
+            _image_compat(img, caption=f"{cls} — top {len(freqs)} TF-IDF terms")
 
 # ---------- Prediction Page ----------
 
