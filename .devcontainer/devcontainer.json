@@ -1,33 +1,38 @@
 {
   "name": "Python 3",
-  // Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
   "image": "mcr.microsoft.com/devcontainers/python:1-3.11-bullseye",
+
   "customizations": {
     "codespaces": {
-      "openFiles": [
-        "README.md",
-        "streamlit_tfidf_emotions.py"
-      ]
+      "openFiles": ["README.md", "streamlit_tfidf_emotions.py"]
     },
     "vscode": {
       "settings": {},
-      "extensions": [
-        "ms-python.python",
-        "ms-python.vscode-pylance"
-      ]
+      "extensions": ["ms-python.python", "ms-python.vscode-pylance"]
     }
   },
+
   "updateContentCommand": "[ -f packages.txt ] && sudo apt update && sudo apt upgrade -y && sudo xargs apt install -y <packages.txt; [ -f requirements.txt ] && pip3 install --user -r requirements.txt; pip3 install --user streamlit; echo '✅ Packages installed and Requirements met'",
+
+  // Start Streamlit and bind to 0.0.0.0:8501 so Codespaces can proxy it.
   "postAttachCommand": {
-    "server": "streamlit run streamlit_tfidf_emotions.py --server.enableCORS false --server.enableXsrfProtection false"
+    "server": "streamlit run streamlit_tfidf_emotions.py --server.address 0.0.0.0 --server.port 8501 --server.enableCORS false --server.enableXsrfProtection false"
   },
+
+  // Forward these ports automatically
+  "forwardPorts": [8501],
+
+  // Make 8501 PUBLIC every time
   "portsAttributes": {
     "8501": {
       "label": "Application",
-      "onAutoForward": "openPreview"
+      "onAutoForward": "openPreview",
+      "visibility": "public"
     }
   },
-  "forwardPorts": [
-    8501
-  ]
+
+  // Optional: any *other* auto-forwarded ports should default to Public
+  "otherPortsAttributes": {
+    "visibility": "public"
+  }
 }
